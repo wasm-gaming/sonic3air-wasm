@@ -1,0 +1,61 @@
+name: Build
+
+# Builds the package (the pinned official engine + the SDK) and tests it; on main,
+# deploys the demo to Pages. release.yml builds again from the bumped version and publishes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The upstream zip (~137 MB) is pinned by tag and SHA-256: cache it across runs.
+      - uses: actions/cache@v4
+        with:
+          path: .tmp/upstream
+          key: sonic3air-upstream-${{ hashFiles('scripts/fetch-upstream.mjs') }}
+      - name: Engine (download, check, wrap) + SDK + app + demo
+        run: make build
+      - name: Typecheck and test (the built package, loaded with no import map)
+        run: make test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pages:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist }
+      - uses: actions/configure-pages@v5
+        with: { enablement: true }
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+      - id: deploy
+        uses: actions/deploy-pages@v4

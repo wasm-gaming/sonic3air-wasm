@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sonic 3 A.I.R. WASM — engine app demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    html, body { margin: 0; height: 100%; background: #000; color: #e2e8f0; }
+    #app { position: fixed; inset: 0; }
+    #pick { position: fixed; inset: 0; display: grid; place-content: center; gap: 1rem; text-align: center; padding: 1rem; }
+    label { display: grid; gap: .4rem; font-size: .9rem; }
+    button { font: inherit; padding: .6rem 1.2rem; background: #2563eb; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+    a { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <form id="pick">
+    <h1>Sonic 3 A.I.R.</h1>
+    <label>Sonic_Knuckles_wSonic3.bin <input type="file" id="rom" accept=".bin,.md,.gen" required /></label>
+    <label>audioremaster.bin (opcional) <input type="file" id="audio" accept=".bin" /></label>
+    <button>Jugar</button>
+    <a href="index.html">El SDK solo</a>
+  </form>
+
+  <script type="module">
+    // What a launcher does: hands the engine's app a host (engine-specs EngineAppHost)
+    // with the game's files as thunks, a storage namespace and the shared input.
+    import { createInput } from './sonic3air/engine-specs.js';
+    import * as app from './sonic3air/app/app.js';
+
+    const $ = (s) => document.querySelector(s);
+    $('#pick').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const rom = $('#rom').files[0];
+      const audio = $('#audio').files[0];
+      $('#pick').remove();
+      const assets = { rom: () => rom.arrayBuffer().then((b) => new Uint8Array(b)) };
+      if (audio) assets.audioremaster = () => audio.arrayBuffer().then((b) => new Uint8Array(b));
+      window.handle = await app.mount($('#app'), {
+        game: { slug: 'sonic3air', title: 'Sonic 3 A.I.R.', accent: '#2563eb' },
+        storage: { namespace: 'demo' },
+        assets,
+        input: createInput(),
+        exit: () => location.reload(),
+      });
+    });
+  </script>
+</body>
+</html>
