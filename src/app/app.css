@@ -1,0 +1,104 @@
+/* sonic3air app — boot screen and pause menu (the look of the rsdk apps).
+   Tokens come from engine-specs (UI_TOKENS, `--wg-*`) when the host sets them; the
+   fallbacks are the same values, so the app looks right on a bare page too. */
+
+.s3air-app {
+  --ring: var(--wg-focus-ring, 0 0 0 3px #fff);
+  --surface: var(--wg-surface, rgb(18 20 28 / 0.78));
+  --line: var(--wg-line, rgb(255 255 255 / 0.12));
+  --text: var(--wg-text, #f4f6fb);
+  --muted: var(--wg-muted, #8e97a9);
+  --danger: var(--wg-danger, #f87171);
+  --ui: var(--wg-font-ui, 'Inter Variable', 'Inter', system-ui, sans-serif);
+  --display: var(--wg-font-display, 'Unbounded Variable', 'Unbounded', system-ui, sans-serif);
+  --ease: var(--wg-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: var(--text);
+  font-family: var(--ui);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.s3air-app * { box-sizing: border-box; }
+.s3air-stage { position: absolute; inset: 0; display: grid; place-items: center; }
+.s3air-stage canvas { outline: none; }
+.s3air-overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.s3air-overlay > * { pointer-events: auto; }
+.s3air-app[data-screen='game'] .s3air-overlay { display: none; }
+
+/* Everything but the game sits on a backdrop that keeps the game visible underneath. */
+.s3air-app:not([data-screen='game']) .s3air-overlay {
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%),
+    rgb(4 6 12 / 0.72);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.s3air-app[data-screen='boot'] .s3air-overlay { background-color: rgb(4 6 12 / 0.9); }
+
+.kicker { margin: 0; font: 600 0.72rem var(--ui); letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.s3air-app h2 { margin: 0; font: 700 clamp(1.4rem, 3vw, 2.1rem) var(--display); letter-spacing: -0.02em; }
+
+/* ---- boot ---- */
+.s3air-boot { display: grid; justify-items: center; gap: 22px; }
+.s3air-boot img { width: min(260px, 50vw); border-radius: 22px; box-shadow: 0 30px 80px -30px #000; animation: s3air-breathe 2.4s var(--ease) infinite alternate; }
+.s3air-boot p { margin: 0; color: var(--muted); font-weight: 500; }
+@keyframes s3air-breathe { from { opacity: 0.55; transform: scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ---- pause & confirm ---- */
+.s3air-panel {
+  width: min(440px, 92vw); display: grid; gap: 10px; padding: 26px; border-radius: 28px;
+  background: rgb(20 22 31 / 0.9); border: 1px solid var(--line); box-shadow: 0 40px 100px -30px #000;
+}
+.s3air-panel h2 { margin-bottom: 8px; }
+.s3air-panel .text { margin: 0 0 8px; color: var(--muted); line-height: 1.5; }
+.item {
+  all: unset; box-sizing: border-box; display: grid; gap: 2px; padding: 13px 16px; border-radius: 14px;
+  background: rgb(255 255 255 / 0.05); font-weight: 600; cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
+}
+.item small { font-weight: 500; font-size: 0.78rem; color: var(--muted); }
+.item.is-focused { background: #fff; color: #0b0d12; box-shadow: var(--ring); }
+.item.is-focused small { color: #4b5563; }
+.item.is-danger.is-focused { background: var(--danger); color: #1a0505; box-shadow: 0 0 0 3px var(--danger); }
+.s3air-panel .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.s3air-panel .row .item { text-align: center; }
+/* A dialog sits on its own layer, above anything the screen under it positions (the
+   character art on the slot cards is z-index 1), on a backdrop that hides that screen. */
+.s3air-confirm {
+  position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: rgb(4 6 12 / 0.78);
+  backdrop-filter: blur(10px) saturate(0.8);
+  -webkit-backdrop-filter: blur(10px) saturate(0.8);
+}
+.s3air-confirm h2 { font-size: clamp(1.15rem, 2.2vw, 1.55rem); line-height: 1.2; }
+.s3air-confirm .s3air-panel {
+  width: min(500px, 92vw);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    #151821;
+  border-color: rgb(255 255 255 / 0.14);
+  box-shadow: 0 40px 120px -20px #000, 0 0 0 1px rgb(0 0 0 / 0.4);
+}
+
+/* ---- hints ---- */
+.s3air-hints { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.s3air-hints span { display: inline-flex; align-items: center; gap: 7px; }
+.s3air-hints kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: rgb(255 255 255 / 0.12); color: var(--text); font: 700 0.68rem var(--ui); }
+.s3air-panel .s3air-hints { justify-content: flex-start; margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .s3air-boot img { transition: none; animation: none; }
+}
+
+/* ---- touch: the pause button (UX.md: it replaces Select + Start on a touch screen) ---- */
+.s3air-pause {
+  all: unset; position: absolute; z-index: 5; display: none; place-items: center;
+  top: max(10px, env(safe-area-inset-top)); left: 50%; translate: -50% 0;
+  width: 48px; height: 48px; border-radius: 24px; cursor: pointer;
+  background: rgb(0 0 0 / 0.35); border: 1px solid rgb(255 255 255 / 0.25); color: #fff; opacity: 0.7;
+}
+.s3air-pause::before { content: ''; width: 14px; height: 16px; border-inline: 5px solid currentColor; box-sizing: border-box; }
+.s3air-app[data-screen='game'][data-touch] .s3air-pause { display: grid; }
+.s3air-panel .text.is-error { color: var(--danger); }

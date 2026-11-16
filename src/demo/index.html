@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sonic 3 A.I.R. WASM — SDK demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    html, body { margin: 0; height: 100%; background: #000; color: #e2e8f0; }
+    body { display: grid; grid-template-rows: 1fr auto; }
+    #stage { display: grid; place-items: center; min-height: 0; overflow: hidden; }
+    #bar { display: flex; gap: .75rem; align-items: center; justify-content: center; padding: .75rem; background: #111; flex-wrap: wrap; }
+    label { display: inline-flex; gap: .4rem; align-items: center; font-size: .85rem; }
+    button { font: inherit; padding: .4rem 1rem; background: #222; color: inherit; border: 1px solid #444; border-radius: 6px; cursor: pointer; }
+    #status { color: #94a3b8; font-size: .85rem; }
+    a { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="bar">
+    <label>ROM <input type="file" id="rom" accept=".bin,.md,.gen" /></label>
+    <label>audioremaster.bin (optional) <input type="file" id="audio" accept=".bin" /></label>
+    <button id="start">Start</button>
+    <button id="pause" disabled>Pause</button>
+    <span id="status">Sonic_Knuckles_wSonic3.bin (Sonic &amp; Knuckles + Sonic 3, 4 MB). Arrows + A/S/D, Enter = Start, Esc = Back. <a href="app.html">The engine app</a></span>
+  </div>
+
+  <script type="module">
+    // No build and no import map: the SDK is self-contained (it carries the contract's
+    // runtime beside it). One game per page — reload for another.
+    import Sonic3AirSDK from './sonic3air/sonic3air.sdk.js';
+
+    const $ = (s) => document.querySelector(s);
+    const status = $('#status');
+    let play = null;
+
+    $('#start').addEventListener('click', async () => {
+      if (play) return location.reload();
+      const rom = $('#rom').files[0];
+      const audio = $('#audio').files[0];
+      if (!rom) return (status.textContent = 'Pick the ROM first.');
+      status.textContent = `Loading ${rom.name}…`;
+      try {
+        play = await new Sonic3AirSDK()
+          .assets({ rom: () => rom.arrayBuffer(), audioremaster: audio ? () => audio.arrayBuffer() : null })
+          .storage({ namespace: new URLSearchParams(location.search).get('ns') ?? 'demo' })
+          .on('saves', ({ detail }) => (status.textContent = `Saved ${detail.files.join(', ') || '—'} → OPFS ${play.storagePath}/`))
+          .on('error', ({ detail }) => (status.textContent = `Error: ${detail.message}`))
+          .on('exit', () => (status.textContent = 'The game quit.'))
+          .mount($('#stage'))
+          .start();
+        status.textContent = `Running — save data in OPFS ${play.storagePath}/`;
+        $('#pause').disabled = false;
+        $('#start').textContent = 'Reload';
+        $('#stage canvas').focus();
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    });
+    $('#pause').addEventListener('click', (e) => {
+      if (play.pausedBy) { play.resume('demo'); e.target.textContent = 'Pause'; }
+      else { play.pause('demo'); e.target.textContent = 'Resume'; }
+      $('#stage canvas').focus();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+
+# Build workspace (the upstream zip is cached here) and output (built in CI, attached to Releases)
+.tmp/
+dist/
+*.tsbuildinfo
+
+# Game data: never committed, the host provides it at runtime
+*.bin
+
+.DS_Store
+.vscode/
