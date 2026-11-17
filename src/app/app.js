@@ -16,19 +16,44 @@
 // screen, and the engine has no state to snapshot (see RECORD/).
 //
 // Plain JS and DOM on purpose: the app ships inside the engine's package next to the
-// SDK and loads from a static server, so it imports nothing but the SDK.
+// SDK and loads from a static server, so it imports nothing but the SDK and the contract
+// runtime shipped beside it (`../engine-specs.js`).
 
 import Sonic3AirSDK from '../sonic3air.sdk.js';
+import { createFullscreenToggle, createWakeLock, resolveLocale } from '../engine-specs.js';
 
 const ENGINE = 'sonic3air';
 const OWNER = 'app';
 
+/**
+ * The app's words, in English and Spanish (engine-specs UX.md, "Languages"). The game's own
+ * menus stay as the game ships them.
+ */
+const STRINGS = {
+  booting: { en: 'Starting the engine…', es: 'Arrancando el motor…' },
+  bootFailed: { en: 'Could not start', es: 'No se pudo arrancar' },
+  back: { en: 'Back', es: 'Volver' },
+  paused: { en: 'Paused', es: 'Pausa' },
+  choose: { en: 'choose', es: 'elegir' },
+  continueHint: { en: 'continue', es: 'continuar' },
+  continue: { en: 'Continue', es: 'Continuar' },
+  fullscreen: { en: 'Fullscreen', es: 'Pantalla completa' },
+  fullscreenHint: { en: 'Alt+Enter · Select + Y', es: 'Alt+Enter · Select + Y' },
+  fullscreenHintMac: { en: 'Cmd+Enter · Select + Y', es: 'Cmd+Enter · Select + Y' },
+  exit: { en: 'Back to the launcher', es: 'Volver al lanzador' },
+  leaveAsk: { en: 'Back to the launcher?', es: '¿Volver al lanzador?' },
+  leaveText: { en: 'The game saves where the game itself saves.', es: 'La partida se guarda donde la guarde el juego.' },
+  leave: { en: 'Leave', es: 'Salir' },
+  stay: { en: 'Stay', es: 'Seguir' },
+  unknownError: { en: 'Unknown error', es: 'Error desconocido' },
+};
+
 const esc = (text) => String(text ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** The error a player reads: the SDK's message without its `sonic3air: ` prefix, capitalised. */
-export const describeError = (error) => {
+export const describeError = (error, unknown = STRINGS.unknownError.es) => {
   const text = String(error?.message ?? error ?? '').replace(/^sonic3air:\s*/, '');
-  return text ? text[0].toUpperCase() + text.slice(1) : 'Error desconocido';
+  return text ? text[0].toUpperCase() + text.slice(1) : unknown;
 };
 
 let cssLoaded = null;
@@ -44,6 +69,9 @@ const loadCss = () =>
 export async function mount(target, host) {
   await loadCss();
 
+  const locale = host.locale ?? resolveLocale();
+  const t = (key) => STRINGS[key]?.[locale] ?? STRINGS[key]?.en ?? key;
+
   const root = document.createElement('div');
   root.className = 's3air-app';
   root.style.setProperty('--accent', host.game?.accent ?? '#2563eb');
@@ -53,14 +81,14 @@ export async function mount(target, host) {
   overlay.className = 's3air-overlay';
   const pauseButton = document.createElement('button');
   pauseButton.className = 's3air-pause';
-  pauseButton.setAttribute('aria-label', 'Pausa');
+  pauseButton.setAttribute('aria-label', t('paused'));
   root.append(stage, overlay, pauseButton);
   target.append(root);
 
   /** screen: 'boot' | 'game' | 'pause' | 'confirm' | 'error' */
   const state = {
     screen: 'boot',
-    status: 'Arrancando el motor…',
+    status: t('booting'),
     error: null,
     pause: { items: [], focus: 0 },
     confirm: null, // { title, text, yes, no, onYes, onNo, focus, under }
@@ -78,8 +106,15 @@ export async function mount(target, host) {
   const hints = (pairs) =>
     `<footer class="s3air-hints">${pairs.map(([k, t]) => `<span><kbd>${k}</kbd>${t}</span>`).join('')}</footer>`;
 
+  // Fullscreen (Cmd+Enter / Alt+Enter, Select + Y, and the pause-menu entry), and the screen
+  // kept on while playing. There is no Ajustes screen here: the game's own Options hold the
+  // display settings, so the Wake Lock is always on.
+  const fullscreen = createFullscreenToggle(root);
+  const wake = createWakeLock();
+
   const render = () => {
     if (destroyed) return;
+    wake.setActive(state.screen === 'game');
     root.dataset.screen = state.screen;
     const s = state.screen;
     if (s === 'game') {
@@ -96,9 +131,9 @@ export async function mount(target, host) {
     if (s === 'error') {
       overlay.innerHTML = `<section class="s3air-panel">
         <p class="kicker">${esc(title())}</p>
-        <h2>No se pudo arrancar</h2>
+        <h2>${esc(t('bootFailed'))}</h2>
         <p class="text is-error">${esc(state.error)}</p>
-        <button class="item is-focused" data-exit>Volver</button>
+        <button class="item is-focused" data-exit>${esc(t('back'))}</button>
       </section>`;
       return;
     }
@@ -107,9 +142,9 @@ export async function mount(target, host) {
     if (base === 'pause') {
       html += `<section class="s3air-panel">
         <p class="kicker">${esc(title())}</p>
-        <h2>Pausa</h2>
+        <h2>${esc(t('paused'))}</h2>
         ${state.pause.items.map((item, i) => `<button class="item${i === state.pause.focus && s !== 'confirm' ? ' is-focused' : ''}" data-item="${i}">${esc(item.label)}${item.hint ? `<small>${esc(item.hint)}</small>` : ''}</button>`).join('')}
-        ${hints([['A', 'elegir'], ['B', 'continuar']])}
+        ${hints([['A', t('choose')], ['B', t('continueHint')]])}
       </section>`;
     }
     if (s === 'confirm') {
@@ -140,8 +175,13 @@ export async function mount(target, host) {
     state.pause = {
       focus: 0,
       items: [
-        { label: 'Continuar', run: closePause },
-        { label: 'Volver al lanzador', run: askExit },
+        { label: t('continue'), run: closePause },
+        {
+          label: t('fullscreen'),
+          hint: /mac|iphone|ipad/i.test(navigator.userAgentData?.platform || navigator.platform || '') ? t('fullscreenHintMac') : t('fullscreenHint'),
+          run: () => fullscreen.toggle(),
+        },
+        { label: t('exit'), run: askExit },
       ],
     };
     state.screen = 'pause';
@@ -181,7 +221,7 @@ export async function mount(target, host) {
   };
 
   const askExit = () =>
-    ask({ title: '¿Volver al lanzador?', text: 'La partida se guarda donde la guarde el juego.', yes: 'Salir', no: 'Seguir', onYes: exit });
+    ask({ title: t('leaveAsk'), text: t('leaveText'), yes: t('leave'), no: t('stay'), onYes: exit });
 
   // ---- input ----------------------------------------------------------------------
 
@@ -270,6 +310,8 @@ export async function mount(target, host) {
         /* already gone */
       }
       play = null;
+      fullscreen.destroy();
+      wake.destroy();
       root.remove();
     },
   };
@@ -296,7 +338,7 @@ export async function mount(target, host) {
     enterGame();
   } catch (error) {
     console.error(`[${ENGINE} app]`, error);
-    state.error = describeError(error);
+    state.error = describeError(error, t('unknownError'));
     state.screen = 'error';
     render();
   }
