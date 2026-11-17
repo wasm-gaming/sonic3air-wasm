@@ -13,3 +13,7 @@ test("errors read without the SDK's prefix", () => {
   assert.equal(describeError('plain'), 'Plain');
   assert.equal(describeError(null), 'Error desconocido');
 });
+
+test('describeError speaks the language it is given', () => {
+  assert.equal(describeError(null, 'Unknown error'), 'Unknown error');
+});
