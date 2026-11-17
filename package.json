@@ -1,6 +1,6 @@
 {
   "name": "@wasm-gaming/sonic3air-wasm",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Sonic 3 A.I.R. (Angel Island Revisited, by Eukaryot) for the web: the official WebAssembly build, pinned and checked, with a self-contained JS SDK implementing the wasm-gaming engine contract. The Sonic & Knuckles + Sonic 3 ROM is provided at runtime.",
   "repository": {
     "type": "git",

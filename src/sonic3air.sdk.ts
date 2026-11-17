@@ -666,7 +666,7 @@ export class Sonic3AirPlay extends EnginePlayBase<Sonic3AirPayloads> {
 export class Sonic3AirSDK extends EngineSDKBase<Sonic3AirPayloads> {
   static readonly id = ENGINE_ID;
   /** Kept in step with package.json by `node scripts/sync-version.mjs`. */
-  static readonly version = '0.0.1';
+  static readonly version = '0.1.0';
   static readonly name = 'Sonic 3 A.I.R.';
   static readonly description =
     "Sonic 3 - Angel Island Revisited, Eukaryot's official WebAssembly build. Ships none of the game: the player provides the Sonic & Knuckles + Sonic 3 ROM, and it never leaves their browser.";
